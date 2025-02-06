@@ -1,3 +1,9 @@
+# Changelog
+
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+### [0.0.1](https://github.com/Joemnewton/logseq-plugin-AI-Helper/compare/v1.0.0...v0.0.1) (2025-02-06)
+
 ## [2.1.1](https://github.com/pengx17/logseq-plugin-template-react/compare/v2.1.0...v2.1.1) (2022-03-24)
 
 
