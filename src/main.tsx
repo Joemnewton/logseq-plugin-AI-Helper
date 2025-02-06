@@ -4,6 +4,13 @@ import { logseq as PL } from "../package.json";
 
 const pluginId = PL.id;
 
+// Declare Logseq globally to avoid TypeScript errors
+declare global {
+  interface Window {
+    logseq: typeof logseq;
+  }
+}
+
 // AI Provider interfaces and types
 interface AIProvider {
   name: string;
@@ -73,69 +80,13 @@ class OpenAIProvider implements AIProvider {
   }
 }
 
-// Claude (Anthropic) Provider Implementation
-class ClaudeProvider implements AIProvider {
-  private apiKey: string;
-  private baseUrl = "https://api.anthropic.com/v1/messages";
-  
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
-  }
-
-  name = "Claude";
-
-  private async makeRequest(prompt: string): Promise<string> {
-    try {
-      const response = await fetch(this.baseUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": this.apiKey,
-          "anthropic-version": "2023-06-01"
-        },
-        body: JSON.stringify({
-          model: "claude-2",
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: 1024,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return data.content[0].text;
-    } catch (error) {
-      console.error("Claude API error:", error);
-      throw error;
-    }
-  }
-
-  async summarizeText(text: string): Promise<string> {
-    return this.makeRequest(`Please provide a concise summary of the following text:\n\n${text}`);
-  }
-
-  async improveWriting(text: string): Promise<string> {
-    return this.makeRequest(`Please improve the following text while maintaining its core message:\n\n${text}`);
-  }
-
-  async changeWritingStyle(text: string, style: string): Promise<string> {
-    return this.makeRequest(`Please rewrite the following text in a ${style} style:\n\n${text}`);
-  }
-
-  async completeText(text: string): Promise<string> {
-    return this.makeRequest(`Please complete the following text naturally:\n\n${text}`);
-  }
-}
-
 // AI Service Manager
 class AIManager {
   private provider: AIProvider | null = null;
   private config: AIConfig | null = null;
 
   async initialize() {
-    const config = await logseq.settings.get('aiConfig');
+    const config = await (logseq.settings as any).get('aiConfig');
     if (config) {
       this.config = config as AIConfig;
       this.setProvider(this.config.provider, this.config.apiKey);
@@ -146,9 +97,6 @@ class AIManager {
     switch (providerName.toLowerCase()) {
       case 'openai':
         this.provider = new OpenAIProvider(apiKey);
-        break;
-      case 'claude':
-        this.provider = new ClaudeProvider(apiKey);
         break;
       default:
         throw new Error(`Unsupported AI provider: ${providerName}`);
@@ -184,23 +132,25 @@ const aiManager = new AIManager();
 
 // Register settings
 function registerSettings() {
-  logseq.useSettingsSchema([
-    {
-      key: "aiConfig",
-      type: "object",
-      default: {
-        provider: "openai",
-        apiKey: "",
+  if (logseq.useSettingsSchema) {
+    logseq.useSettingsSchema([
+      {
+        key: "aiConfig",
+        type: "object",
+        default: {
+          provider: "openai",
+          apiKey: "",
+        },
+        description: "AI configuration",
+        title: "AI Settings",
       },
-      description: "AI configuration",
-      title: "AI Settings",
-    },
-  ]);
+    ]);
+  }
 }
 
 // Utility function to handle selected text
 async function getSelectedText(): Promise<string> {
-  const text = await logseq.Editor.getSelectedText();
+  const text = await (logseq.Editor as any).getSelectedText();
   if (!text) {
     throw new Error('No text selected. Please select some text first.');
   }
@@ -224,60 +174,9 @@ async function main() {
           const text = await getSelectedText();
           logseq.App.showMsg("Summarizing text...", "info");
           const summary = await aiManager.executeAICommand('summarize', text);
-          const block = await logseq.Editor.getCurrentBlock();
+          const block = await (logseq.Editor as any).getCurrentBlock();
           if (block) {
-            await logseq.Editor.insertBlock(block.uuid, summary, { after: true });
-          }
-        } catch (error) {
-          logseq.App.showMsg(error.message, "error");
-        }
-      }
-    },
-    {
-      key: "improve",
-      label: "Improve writing",
-      action: async () => {
-        try {
-          const text = await getSelectedText();
-          logseq.App.showMsg("Improving text...", "info");
-          const improved = await aiManager.executeAICommand('improve', text);
-          const block = await logseq.Editor.getCurrentBlock();
-          if (block) {
-            await logseq.Editor.insertBlock(block.uuid, improved, { after: true });
-          }
-        } catch (error) {
-          logseq.App.showMsg(error.message, "error");
-        }
-      }
-    },
-    {
-      key: "formal",
-      label: "Make text formal",
-      action: async () => {
-        try {
-          const text = await getSelectedText();
-          logseq.App.showMsg("Changing style...", "info");
-          const formal = await aiManager.executeAICommand('style', text, 'formal');
-          const block = await logseq.Editor.getCurrentBlock();
-          if (block) {
-            await logseq.Editor.insertBlock(block.uuid, formal, { after: true });
-          }
-        } catch (error) {
-          logseq.App.showMsg(error.message, "error");
-        }
-      }
-    },
-    {
-      key: "complete",
-      label: "Complete text",
-      action: async () => {
-        try {
-          const text = await getSelectedText();
-          logseq.App.showMsg("Completing text...", "info");
-          const completed = await aiManager.executeAICommand('complete', text);
-          const block = await logseq.Editor.getCurrentBlock();
-          if (block) {
-            await logseq.Editor.insertBlock(block.uuid, completed, { after: true });
+            await (logseq.Editor as any).insertBlock(block.uuid, summary, { after: true });
           }
         } catch (error) {
           logseq.App.showMsg(error.message, "error");
@@ -291,34 +190,5 @@ async function main() {
     logseq.Editor.registerSlashCommand(cmd.label, cmd.action);
   });
 
-  // Register settings UI
-  logseq.provideModel({
-    show() {
-      logseq.showSettingsUI();
-    },
-  });
-
-  // Register toolbar icon
-  const toolbarIconClass = "ai-helper-toolbar-icon";
-  logseq.App.registerUIItem("toolbar", {
-    key: toolbarIconClass,
-    template: `
-      <a data-on-click="show">
-        <div class="${toolbarIconClass}">🤖</div>
-      </a>
-    `,
-  });
-
-  logseq.provideStyle(`
-    .${toolbarIconClass} {
-      opacity: 0.55;
-      font-size: 20px;
-      margin-top: 4px;
-    }
-    .${toolbarIconClass}:hover {
-      opacity: 0.9;
-    }
-  `);
+  logseq.ready(main).catch(console.error);
 }
-
-logseq.ready(main).catch(console.error);
