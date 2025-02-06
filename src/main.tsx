@@ -4,6 +4,9 @@ import { logseq as PL } from "../package.json";
 
 const pluginId = PL.id;
 
+// Define a constant for the untyped Logseq API
+const L = logseq as any;
+
 // Declare Logseq globally to avoid TypeScript errors
 declare global {
   interface Window {
@@ -86,7 +89,7 @@ class AIManager {
   private config: AIConfig | null = null;
 
   async initialize() {
-    const config = await (logseq as any)?.settings?.get('aiConfig');
+    const config = await L.settings.get('aiConfig');
     if (config) {
       this.config = config as AIConfig;
       this.setProvider(this.config.provider, this.config.apiKey);
@@ -132,8 +135,8 @@ const aiManager = new AIManager();
 
 // Register settings
 function registerSettings() {
-  if ((logseq as any)?.useSettingsSchema) {
-    (logseq as any).useSettingsSchema([
+  if (L.useSettingsSchema) {
+    L.useSettingsSchema([
       {
         key: "aiConfig",
         type: "object",
@@ -150,7 +153,7 @@ function registerSettings() {
 
 // Utility function to handle selected text
 async function getSelectedText(): Promise<string> {
-  const text = await (logseq as any)?.Editor?.getSelectedText();
+  const text = await L.Editor.getSelectedText();
   if (!text) {
     throw new Error('No text selected. Please select some text first.');
   }
@@ -172,14 +175,14 @@ async function main() {
       action: async () => {
         try {
           const text = await getSelectedText();
-          (logseq as any)?.App?.showMsg("Summarizing text...", "info");
+          L.App.showMsg("Summarizing text...", "info");
           const summary = await aiManager.executeAICommand('summarize', text);
-          const block = await (logseq as any)?.Editor?.getCurrentBlock();
+          const block = await L.Editor.getCurrentBlock();
           if (block) {
-            await (logseq as any)?.Editor?.insertBlock(block.uuid, summary, { after: true });
+            await L.Editor.insertBlock(block.uuid, summary, { after: true });
           }
         } catch (error: any) {
-          (logseq as any)?.App?.showMsg(error.message, "error");
+          L.App.showMsg(error.message, "error");
         }
       }
     }
@@ -187,8 +190,8 @@ async function main() {
 
   // Register all commands
   commands.forEach(cmd => {
-    (logseq as any)?.Editor?.registerSlashCommand(cmd.label, cmd.action);
+    L.Editor.registerSlashCommand(cmd.label, cmd.action);
   });
-
-  (logseq as any)?.ready(main).catch(console.error);
 }
+
+L.ready(main).catch(console.error);

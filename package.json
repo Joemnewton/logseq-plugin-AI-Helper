@@ -9,12 +9,12 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@logseq/libs": "0.0.17",
     "cross-fetch": "^4.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@logseq/libs": "0.0.17",
     "@semantic-release/changelog": "6.0.3",
     "@semantic-release/exec": "6.0.3",
     "@semantic-release/git": "10.0.1",
