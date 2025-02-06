@@ -57,9 +57,9 @@ class OpenAIProvider implements AIProvider {
 
       const data = await response.json();
       return data.choices[0].message.content.trim();
-    } catch (error) {
+    } catch (error: any) {
       console.error("OpenAI API error:", error);
-      throw error;
+      throw new Error(error.message || "Unknown API error");
     }
   }
 
@@ -86,7 +86,7 @@ class AIManager {
   private config: AIConfig | null = null;
 
   async initialize() {
-    const config = await (logseq.settings as any).get('aiConfig');
+    const config = await (logseq as any).settings?.get('aiConfig');
     if (config) {
       this.config = config as AIConfig;
       this.setProvider(this.config.provider, this.config.apiKey);
@@ -121,9 +121,9 @@ class AIManager {
         default:
           throw new Error(`Unknown command: ${command}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('AI command execution error:', error);
-      throw error;
+      throw new Error(error.message || "Unknown AI command error");
     }
   }
 }
@@ -132,8 +132,8 @@ const aiManager = new AIManager();
 
 // Register settings
 function registerSettings() {
-  if (logseq.useSettingsSchema) {
-    logseq.useSettingsSchema([
+  if ((logseq as any).useSettingsSchema) {
+    (logseq as any).useSettingsSchema([
       {
         key: "aiConfig",
         type: "object",
@@ -150,7 +150,7 @@ function registerSettings() {
 
 // Utility function to handle selected text
 async function getSelectedText(): Promise<string> {
-  const text = await (logseq.Editor as any).getSelectedText();
+  const text = await (logseq as any).Editor?.getSelectedText();
   if (!text) {
     throw new Error('No text selected. Please select some text first.');
   }
@@ -174,11 +174,11 @@ async function main() {
           const text = await getSelectedText();
           logseq.App.showMsg("Summarizing text...", "info");
           const summary = await aiManager.executeAICommand('summarize', text);
-          const block = await (logseq.Editor as any).getCurrentBlock();
+          const block = await (logseq as any).Editor?.getCurrentBlock();
           if (block) {
-            await (logseq.Editor as any).insertBlock(block.uuid, summary, { after: true });
+            await (logseq as any).Editor?.insertBlock(block.uuid, summary, { after: true });
           }
-        } catch (error) {
+        } catch (error: any) {
           logseq.App.showMsg(error.message, "error");
         }
       }
